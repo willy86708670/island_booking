@@ -21,36 +21,35 @@ async function sendTelegram(message) {
     const browser = await chromium.launch({ headless: true });
     const page = await browser.newPage();
     
-    // 模擬真實手機瀏覽器，這能大幅降低被網站阻擋的機率
+    // 模擬真實使用者行為
     await page.setExtraHTTPHeaders({ 
-        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1' 
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' 
     });
 
     try {
-        // 設定更寬鬆的等待模式
-        await page.goto('https://inline.app/booking/-NeqTSgDQOAYi30lg4a7:inline-live-3/-OUYVD5L8af9l-fOxBi5', { timeout: 60000, waitUntil: 'domcontentloaded' });
+        // 使用 networkidle 等待頁面所有腳本載入完成
+        await page.goto('https://inline.app/booking/-NeqTSgDQOAYi30lg4a7:inline-live-3/-OUYVD5L8af9l-fOxBi5', { timeout: 60000, waitUntil: 'networkidle' });
         
-        const selector = 'select[id*="adult"]';
-        await page.waitForSelector(selector, { timeout: 45000, visible: true });
-        
-        await page.selectOption(selector, '4');
-        await page.click('#date_picker');
-        await page.waitForTimeout(5000); 
+        console.log("網頁載入完成，開始進行空位掃描...");
+        await page.waitForTimeout(10000); // 強制等待 10 秒讓動態內容呈現
 
+        // 直接掃描頁面上的所有按鈕，檢查是否有時間格式的文字
         const hasSlot = await page.evaluate(() => {
             const btns = document.querySelectorAll('button');
-            for(let b of btns) { if(/\d{1,2}:\d{2}/.test(b.innerText)) return true; }
+            for(let b of btns) { 
+                if(/\d{1,2}:\d{2}/.test(b.innerText)) return true; 
+            }
             return false;
         });
 
         if (hasSlot) {
             await sendTelegram("🎉 島語高漢神店偵測到空位！請立即前往預約：\nhttps://inline.app/booking/-NeqTSgDQOAYi30lg4a7:inline-live-3/-OUYVD5L8af9l-fOxBi5");
         } else {
-            await sendTelegram("🔍 掃描完成：目前尚未偵測到 4 人空位。持續監控中...");
+            await sendTelegram("🔍 掃描結果：目前尚未偵測到空位。");
         }
     } catch (e) {
         console.error("爬蟲錯誤:", e);
-        await sendTelegram("⚠️ 監控程式發生錯誤，可能網站載入逾時或結構變更，請檢查 GitHub Actions Log。");
+        await sendTelegram("⚠️ 監控程式遇到阻礙，可能是網站反爬蟲機制升級，或是載入時間過長。");
     } finally {
         await browser.close();
     }
