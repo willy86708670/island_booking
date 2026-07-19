@@ -2,6 +2,7 @@ name: Monitor Booking
 on:
   schedule:
     - cron: '*/5 * * * *'
+    # Force trigger schedule scan
   workflow_dispatch:
 
 jobs:
