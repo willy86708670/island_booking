@@ -1,9 +1,6 @@
 const { chromium } = require('playwright');
 const https = require('https');
 
-// 【重要】測試完畢後，請務必將此處改回 false，否則只會發送測試訊息
-const FORCE_TEST = false; 
-
 async function sendTelegram(message) {
     const token = process.env.TELEGRAM_TOKEN;
     const chatId = process.env.TELEGRAM_CHAT_ID;
@@ -14,30 +11,31 @@ async function sendTelegram(message) {
             res.on('data', () => {}); 
             res.on('end', () => resolve());
         }).on('error', (err) => {
-            console.log("通知發送過程發生網路中斷，已忽略:", err.message);
+            console.log("通知發送忽略小錯誤:", err.message);
             resolve(); 
         });
     });
 }
 
 (async () => {
-    // 測試模式：發送測試訊息確認連線是否已完全打通
-    if (FORCE_TEST) {
-        await sendTelegram("測試訊息：GitHub Actions 與 Telegram 連線已完全修復成功！");
-        console.log("測試訊息已發送");
-        return;
-    }
-
     const browser = await chromium.launch({ headless: true });
     const page = await browser.newPage();
-    await page.setExtraHTTPHeaders({ 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36' });
+    
+    // 模擬真實手機瀏覽器，這能大幅降低被網站阻擋的機率
+    await page.setExtraHTTPHeaders({ 
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1' 
+    });
 
     try {
-        await page.goto('https://inline.app/booking/-NeqTSgDQOAYi30lg4a7:inline-live-3/-OUYVD5L8af9l-fOxBi5', { timeout: 60000 });
-        await page.waitForSelector('select[id*="adult"]');
-        await page.selectOption('select[id*="adult"]', '4');
+        // 設定更寬鬆的等待模式
+        await page.goto('https://inline.app/booking/-NeqTSgDQOAYi30lg4a7:inline-live-3/-OUYVD5L8af9l-fOxBi5', { timeout: 60000, waitUntil: 'domcontentloaded' });
+        
+        const selector = 'select[id*="adult"]';
+        await page.waitForSelector(selector, { timeout: 45000, visible: true });
+        
+        await page.selectOption(selector, '4');
         await page.click('#date_picker');
-        await page.waitForTimeout(3000);
+        await page.waitForTimeout(5000); 
 
         const hasSlot = await page.evaluate(() => {
             const btns = document.querySelectorAll('button');
@@ -46,12 +44,13 @@ async function sendTelegram(message) {
         });
 
         if (hasSlot) {
-            await sendTelegram("🎉 島語高漢神店偵測到空位！\nhttps://inline.app/booking/-NeqTSgDQOAYi30lg4a7:inline-live-3/-OUYVD5L8af9l-fOxBi5");
+            await sendTelegram("🎉 島語高漢神店偵測到空位！請立即前往預約：\nhttps://inline.app/booking/-NeqTSgDQOAYi30lg4a7:inline-live-3/-OUYVD5L8af9l-fOxBi5");
         } else {
-            console.log("目前無空位");
+            await sendTelegram("🔍 掃描完成：目前尚未偵測到 4 人空位。持續監控中...");
         }
     } catch (e) {
-        console.error("執行爬蟲時發生錯誤:", e);
+        console.error("爬蟲錯誤:", e);
+        await sendTelegram("⚠️ 監控程式發生錯誤，可能網站載入逾時或結構變更，請檢查 GitHub Actions Log。");
     } finally {
         await browser.close();
     }
