@@ -1,6 +1,9 @@
 const { chromium } = require('playwright');
 const https = require('https');
 
+// 設定為 true 即可強制發送測試訊息到你的 Telegram
+const FORCE_TEST = true; 
+
 async function sendTelegram(message) {
     const token = process.env.TELEGRAM_TOKEN;
     const chatId = process.env.TELEGRAM_CHAT_ID;
@@ -9,9 +12,15 @@ async function sendTelegram(message) {
 }
 
 (async () => {
+    // 如果開啟測試模式，直接發送訊息並結束
+    if (FORCE_TEST) {
+        await sendTelegram("測試訊息：GitHub Actions 與 Telegram 連線成功！");
+        console.log("測試訊息已發送");
+        return;
+    }
+
     const browser = await chromium.launch({ headless: true });
     const page = await browser.newPage();
-    // 模擬真實 User-Agent 避免被封鎖
     await page.setExtraHTTPHeaders({ 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36' });
 
     try {
@@ -21,7 +30,6 @@ async function sendTelegram(message) {
         await page.click('#date_picker');
         await page.waitForTimeout(3000);
 
-        // 偵測日期邏輯 (使用與你手機版相同的檢查)
         const hasSlot = await page.evaluate(() => {
             const btns = document.querySelectorAll('button');
             for(let b of btns) { if(/\d{1,2}:\d{2}/.test(b.innerText)) return true; }
@@ -30,8 +38,6 @@ async function sendTelegram(message) {
 
         if (hasSlot) {
             await sendTelegram("🎉 島語高漢神店偵測到空位！\nhttps://inline.app/booking/-NeqTSgDQOAYi30lg4a7:inline-live-3/-OUYVD5L8af9l-fOxBi5");
-        } else {
-            console.log("目前無空位");
         }
     } catch (e) {
         console.error(e);
