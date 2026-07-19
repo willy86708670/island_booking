@@ -36,18 +36,17 @@ async function checkBooking() {
 (async () => {
     const html = await checkBooking();
     if (!html) {
-        // 連線失敗才通知，平常保持安靜
+        await sendTelegram("⚠️ 監控系統異常：無法連線，請檢查！");
         return;
     }
 
-    // 搜尋是否有時間格式 (例如 11:30, 17:30 等)
-    // Inline 網頁若有空位，通常會出現類似時間的字串
+    // 檢查是否有時間格式
     const hasSlot = /\d{2}:\d{2}/.test(html);
 
     if (hasSlot) {
         await sendTelegram("🎉 島語高漢神店偵測到疑似空位！請立即手動確認：\nhttps://inline.app/booking/-NeqTSgDQOAYi30lg4a7:inline-live-3/-OUYVD5L8af9l-fOxBi5");
     } else {
-        // 這裡我們不發送「連線正常」的訊息，讓 Telegram 保持安靜，只有抓到空位才通知
-        console.log("目前無空位，保持安靜。");
+        // 這是你想要的「一直通知」的報平安訊息
+        await sendTelegram("🔍 系統掃描回報：目前尚未偵測到空位，持續監控中...");
     }
 })();
