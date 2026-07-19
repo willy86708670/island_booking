@@ -14,15 +14,13 @@ async function sendTelegram(message) {
 }
 
 async function checkBooking() {
-    // 這次我們加上更完整的瀏覽器特徵 (Cookies/Referer)
     const options = {
         hostname: 'inline.app',
         path: '/booking/-NeqTSgDQOAYi30lg4a7:inline-live-3/-OUYVD5L8af9l-fOxBi5',
         headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-            'Referer': 'https://www.google.com/',
-            'Accept-Language': 'zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7',
-            'Connection': 'keep-alive'
+            'Referer': 'https://inline.app/',
+            'Accept-Language': 'zh-TW,zh;q=0.9'
         }
     };
 
@@ -31,21 +29,25 @@ async function checkBooking() {
             let data = '';
             res.on('data', (chunk) => data += chunk);
             res.on('end', () => resolve(data));
-        }).on('error', (e) => resolve(null));
+        }).on('error', () => resolve(null));
     });
 }
 
 (async () => {
     const html = await checkBooking();
     if (!html) {
-        await sendTelegram("⚠️ 監控失敗：無法連線，可能 IP 被阻擋。");
+        // 連線失敗才通知，平常保持安靜
         return;
     }
 
-    // 判斷網頁內容，如果回傳內容很短，很可能就是被擋了
-    if (html.length > 2000) { 
-        await sendTelegram("✅ 監控系統運行中：網站連線正常！");
+    // 搜尋是否有時間格式 (例如 11:30, 17:30 等)
+    // Inline 網頁若有空位，通常會出現類似時間的字串
+    const hasSlot = /\d{2}:\d{2}/.test(html);
+
+    if (hasSlot) {
+        await sendTelegram("🎉 島語高漢神店偵測到疑似空位！請立即手動確認：\nhttps://inline.app/booking/-NeqTSgDQOAYi30lg4a7:inline-live-3/-OUYVD5L8af9l-fOxBi5");
     } else {
-        await sendTelegram("⚠️ 偵測到網頁內容過短，可能被觸發了防爬蟲機制。");
+        // 這裡我們不發送「連線正常」的訊息，讓 Telegram 保持安靜，只有抓到空位才通知
+        console.log("目前無空位，保持安靜。");
     }
 })();
