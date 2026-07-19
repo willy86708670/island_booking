@@ -2,7 +2,7 @@ const { chromium } = require('playwright');
 const https = require('https');
 
 // 【重要】測試完畢後，請務必將此處改回 false，否則只會發送測試訊息
-const FORCE_TEST = true; 
+const FORCE_TEST = false; 
 
 async function sendTelegram(message) {
     const token = process.env.TELEGRAM_TOKEN;
