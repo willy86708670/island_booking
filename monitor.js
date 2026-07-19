@@ -1,20 +1,29 @@
 const { chromium } = require('playwright');
 const https = require('https');
 
-// 設定為 true 即可強制發送測試訊息到你的 Telegram
+// 【重要】測試完畢後，請務必將此處改回 false，否則只會發送測試訊息
 const FORCE_TEST = true; 
 
 async function sendTelegram(message) {
     const token = process.env.TELEGRAM_TOKEN;
     const chatId = process.env.TELEGRAM_CHAT_ID;
     const url = `https://api.telegram.org/bot${token}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(message)}`;
-    return new Promise((resolve) => https.get(url, (res) => resolve()));
+    
+    return new Promise((resolve) => {
+        https.get(url, (res) => {
+            res.on('data', () => {}); 
+            res.on('end', () => resolve());
+        }).on('error', (err) => {
+            console.log("通知發送過程發生網路中斷，已忽略:", err.message);
+            resolve(); 
+        });
+    });
 }
 
 (async () => {
-    // 如果開啟測試模式，直接發送訊息並結束
+    // 測試模式：發送測試訊息確認連線是否已完全打通
     if (FORCE_TEST) {
-        await sendTelegram("測試訊息：GitHub Actions 與 Telegram 連線成功！");
+        await sendTelegram("測試訊息：GitHub Actions 與 Telegram 連線已完全修復成功！");
         console.log("測試訊息已發送");
         return;
     }
@@ -38,9 +47,11 @@ async function sendTelegram(message) {
 
         if (hasSlot) {
             await sendTelegram("🎉 島語高漢神店偵測到空位！\nhttps://inline.app/booking/-NeqTSgDQOAYi30lg4a7:inline-live-3/-OUYVD5L8af9l-fOxBi5");
+        } else {
+            console.log("目前無空位");
         }
     } catch (e) {
-        console.error(e);
+        console.error("執行爬蟲時發生錯誤:", e);
     } finally {
         await browser.close();
     }
