@@ -14,13 +14,15 @@ async function sendTelegram(message) {
 }
 
 async function checkBooking() {
-    // 這是模擬手機 App 的請求標頭
+    // 這次我們加上更完整的瀏覽器特徵 (Cookies/Referer)
     const options = {
         hostname: 'inline.app',
         path: '/booking/-NeqTSgDQOAYi30lg4a7:inline-live-3/-OUYVD5L8af9l-fOxBi5',
         headers: {
-            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
-            'Accept': 'text/html'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            'Referer': 'https://www.google.com/',
+            'Accept-Language': 'zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7',
+            'Connection': 'keep-alive'
         }
     };
 
@@ -36,14 +38,14 @@ async function checkBooking() {
 (async () => {
     const html = await checkBooking();
     if (!html) {
-        await sendTelegram("⚠️ 監控失敗：無法連線至網站。");
+        await sendTelegram("⚠️ 監控失敗：無法連線，可能 IP 被阻擋。");
         return;
     }
 
-    // 檢查回傳的網頁內容是否包含 "訂位" 或時間字樣
-    if (html.includes("預約") || html.includes("時間")) {
-        await sendTelegram("🔍 系統掃描回報：監控網頁連線正常，持續監控中...");
+    // 判斷網頁內容，如果回傳內容很短，很可能就是被擋了
+    if (html.length > 2000) { 
+        await sendTelegram("✅ 監控系統運行中：網站連線正常！");
     } else {
-        await sendTelegram("⚠️ 系統似乎被擋了，或是網站結構已更動。");
+        await sendTelegram("⚠️ 偵測到網頁內容過短，可能被觸發了防爬蟲機制。");
     }
 })();
